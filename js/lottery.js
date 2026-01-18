@@ -100,12 +100,13 @@ const LotteryModule = {
         // 打乱共享房间顺序
         this.shuffleArray(sharedRooms);
 
-        // 分配共享房间
+        // 分配共享房间 - 严格同性别
+        const unassignedSharedRooms = [];
         for (const roomGroup of sharedRooms) {
             const roomCount = roomGroup.length;
 
-            // 选择性别池：优先选择人数充足的
-            let selectedPool;
+            // 严格选择有足够人数的性别池
+            let selectedPool = null;
             if (maleEmployees.length >= roomCount && femaleEmployees.length >= roomCount) {
                 // 两边都够，随机选择
                 selectedPool = Math.random() < 0.5 ? maleEmployees : femaleEmployees;
@@ -113,35 +114,19 @@ const LotteryModule = {
                 selectedPool = maleEmployees;
             } else if (femaleEmployees.length >= roomCount) {
                 selectedPool = femaleEmployees;
-            } else {
-                // 两边都不够，取较多的那个
-                selectedPool = maleEmployees.length >= femaleEmployees.length ? maleEmployees : femaleEmployees;
+            }
+
+            // 如果没有足够的同性别人员，将这些房间转为单独房间处理
+            if (!selectedPool) {
+                for (const roomInfo of roomGroup) {
+                    unassignedSharedRooms.push(roomInfo);
+                }
+                continue;
             }
 
             // 从选定的池中取出人员分配到这组房间
             for (const roomInfo of roomGroup) {
-                if (selectedPool.length > 0) {
-                    const employee = selectedPool.shift();
-                    result[roomInfo.originalIndex] = {
-                        employeeId: employee.employeeId,
-                        gender: employee.gender,
-                        roomNumber: roomInfo.fullRoom
-                    };
-                }
-            }
-        }
-
-        // 合并剩余人员
-        const remainingEmployees = [...maleEmployees, ...femaleEmployees];
-        this.shuffleArray(remainingEmployees);
-
-        // 打乱单独房间顺序
-        this.shuffleArray(singleRooms);
-
-        // 分配单独房间
-        for (const roomInfo of singleRooms) {
-            if (remainingEmployees.length > 0) {
-                const employee = remainingEmployees.shift();
+                const employee = selectedPool.shift();
                 result[roomInfo.originalIndex] = {
                     employeeId: employee.employeeId,
                     gender: employee.gender,
@@ -150,7 +135,28 @@ const LotteryModule = {
             }
         }
 
-        // 过滤掉可能的空位并重新整理
+        // 合并剩余人员
+        const remainingEmployees = [...maleEmployees, ...femaleEmployees];
+        this.shuffleArray(remainingEmployees);
+
+        // 合并未分配的共享房间到单独房间
+        const allSingleRooms = [...singleRooms, ...unassignedSharedRooms];
+        this.shuffleArray(allSingleRooms);
+
+        // 分配单独房间（允许房间多于人数，多余房间留空）
+        for (const roomInfo of allSingleRooms) {
+            if (remainingEmployees.length > 0) {
+                const employee = remainingEmployees.shift();
+                result[roomInfo.originalIndex] = {
+                    employeeId: employee.employeeId,
+                    gender: employee.gender,
+                    roomNumber: roomInfo.fullRoom
+                };
+            }
+            // 如果没有剩余人员，房间保持未分配（result中为undefined）
+        }
+
+        // 过滤掉未分配的房间
         const finalResult = result.filter(r => r !== undefined && r !== null);
 
         // 随机打乱最终显示顺序
