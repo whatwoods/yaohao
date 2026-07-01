@@ -191,6 +191,10 @@ const ExcelModule = {
         // 按房间号排序
         const sortedData = [...data].sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, 'zh-CN'));
 
+        const total = sortedData.length;
+        const male = sortedData.filter(item => item.gender === '男').length;
+        const female = sortedData.filter(item => item.gender === '女').length;
+
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
 
@@ -200,6 +204,17 @@ const ExcelModule = {
         // 每页显示的行数
         const ROWS_PER_PAGE = 25;
         const totalPages = Math.ceil(sortedData.length / ROWS_PER_PAGE);
+
+        // 设计 token（与页面 CSS 保持一致）
+        const bg = '#FDFCF8';
+        const surface = '#FFFFFF';
+        const border = '#E8E4D9';
+        const textPrimary = '#1C1C1A';
+        const textSecondary = '#6B6A63';
+        const textMuted = '#9C9B91';
+        const accent = '#D97706';
+        const maleColor = '#2563EB';
+        const femaleColor = '#DB2777';
 
         for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
             // 获取当前页的数据
@@ -215,37 +230,63 @@ const ExcelModule = {
                 top: 0;
                 width: 800px;
                 padding: 40px;
-                background: white;
-                font-family: system-ui, -apple-system, 'Microsoft YaHei', sans-serif;
+                background: ${surface};
+                font-family: 'Noto Sans SC', 'Geist', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                color: ${textPrimary};
+            `;
+
+            const headerHtml = pageIndex === 0 ? `
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                        <h1 style="font-size: 24px; font-weight: 600; color: ${textPrimary}; margin: 0;">公寓摇号结果</h1>
+                        <span style="font-size: 12px; color: ${textMuted};">生成时间: ${new Date().toLocaleString('zh-CN')}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
+                        <div style="background: ${bg}; border: 2px solid ${border}; border-radius: 6px; padding: 16px;">
+                            <div style="font-size: 12px; color: ${textSecondary}; margin-bottom: 4px;">总人数</div>
+                            <div style="font-size: 24px; font-weight: 600; color: ${textPrimary};">${total}</div>
+                        </div>
+                        <div style="background: ${bg}; border: 2px solid ${border}; border-radius: 6px; padding: 16px;">
+                            <div style="font-size: 12px; color: ${textSecondary}; margin-bottom: 4px;">男生</div>
+                            <div style="font-size: 24px; font-weight: 600; color: ${textPrimary};">${male}</div>
+                        </div>
+                        <div style="background: ${bg}; border: 2px solid ${border}; border-radius: 6px; padding: 16px;">
+                            <div style="font-size: 12px; color: ${textSecondary}; margin-bottom: 4px;">女生</div>
+                            <div style="font-size: 24px; font-weight: 600; color: ${textPrimary};">${female}</div>
+                        </div>
+                    </div>
+                </div>
+            ` : `
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px;">
+                    <h1 style="font-size: 24px; font-weight: 600; color: ${textPrimary}; margin: 0;">公寓摇号结果</h1>
+                    <span style="font-size: 12px; color: ${textMuted};">第 ${pageIndex + 1} / ${totalPages} 页</span>
+                </div>
             `;
 
             // 构建HTML内容（表头使用传入的 idLabel）
             container.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-                    <h1 style="font-size: 24px; color: #333; margin: 0;">公寓摇号结果</h1>
-                    <span style="font-size: 12px; color: #999;">第 ${pageIndex + 1} / ${totalPages} 页</span>
-                </div>
-                <p style="font-size: 14px; color: #666; margin-bottom: 20px;">生成时间: ${new Date().toLocaleString('zh-CN')}</p>
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                ${headerHtml}
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; border: 2px solid ${border}; border-radius: 6px; overflow: hidden;">
                     <thead>
-                        <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
-                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">序号</th>
-                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">${escapeHtml(idLabel)}</th>
-                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">性别</th>
-                            <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">房间号</th>
+                        <tr style="background: ${bg}; color: ${textPrimary}; border-bottom: 2px solid ${border};">
+                            <th style="padding: 12px; text-align: center; border-right: 1px solid ${border}; font-weight: 600;">序号</th>
+                            <th style="padding: 12px; text-align: center; border-right: 1px solid ${border}; font-weight: 600;">${escapeHtml(idLabel)}</th>
+                            <th style="padding: 12px; text-align: center; border-right: 1px solid ${border}; font-weight: 600;">性别</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600;">房间号</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${pageData.map((item, index) => `
-                            <tr style="background: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
-                                <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${startIdx + index + 1}</td>
-                                <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${escapeHtml(item.employeeId)}</td>
-                                <td style="padding: 10px; text-align: center; border: 1px solid #ddd; color: ${item.gender === '男' ? '#3b82f6' : '#ec4899'};">${escapeHtml(item.gender)}</td>
-                                <td style="padding: 10px; text-align: left; border: 1px solid #ddd;">${escapeHtml(item.roomNumber)}</td>
+                            <tr style="background: ${index % 2 === 0 ? surface : bg}; border-bottom: 1px solid ${border};">
+                                <td style="padding: 10px; text-align: center; border-right: 1px solid ${border};">${startIdx + index + 1}</td>
+                                <td style="padding: 10px; text-align: center; border-right: 1px solid ${border};">${escapeHtml(item.employeeId)}</td>
+                                <td style="padding: 10px; text-align: center; border-right: 1px solid ${border}; color: ${item.gender === '男' ? maleColor : femaleColor}; font-weight: 500;">${escapeHtml(item.gender)}</td>
+                                <td style="padding: 10px; text-align: left;">${escapeHtml(item.roomNumber)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
+                ${pageIndex === 0 && totalPages > 1 ? `<div style="margin-top: 8px; text-align: right; font-size: 12px; color: ${textMuted};">第 1 / ${totalPages} 页</div>` : ''}
             `;
 
             document.body.appendChild(container);
@@ -257,7 +298,7 @@ const ExcelModule = {
                     scale: 2,
                     useCORS: true,
                     logging: false,
-                    backgroundColor: '#ffffff'
+                    backgroundColor: surface
                 });
 
                 // JPEG + quality 0.92（高清但有压缩，体积约 1MB）

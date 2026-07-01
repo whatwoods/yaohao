@@ -15,35 +15,53 @@
     <div class="app-container">
         <!-- 上传区域 -->
         <div id="upload-section" class="upload-section">
-            <div class="upload-card glass-card">
-                <div class="upload-icon">📁</div>
+            <div class="upload-card card">
                 <h1>公寓摇号系统</h1>
-                <p class="upload-hint">上传包含员工信息的 Excel 文件开始摇号</p>
+                <p class="upload-hint">上传包含员工信息的 Excel 文件，开始公平分配房间</p>
                 <div id="drop-zone" class="drop-zone">
                     <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
                     <div class="drop-zone-content">
-                        <span class="drop-icon">⬆️</span>
-                        <p>拖拽文件到此处，或</p>
-                        <button id="browse-btn" class="btn btn-primary">选择文件</button>
+                        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <p>拖拽文件到此处</p>
+                        <span class="file-format-hint">支持 .xlsx、.xls 格式</span>
                     </div>
                 </div>
-                <p class="file-format-hint">支持 .xlsx, .xls 格式</p>
+                <button id="browse-btn" class="btn btn-primary">选择文件</button>
             </div>
         </div>
 
         <!-- 数据展示和摇号区域 -->
         <div id="lottery-section" class="lottery-section hidden">
-            <div class="lottery-header glass-card">
-                <h2>🏠 摇号分配</h2>
+            <div class="lottery-header card">
+                <h2>摇号分配</h2>
                 <div class="btn-group">
-                    <button id="home-btn" class="btn btn-secondary hidden">🏠 返回首页</button>
-                    <button id="export-excel-btn" class="btn btn-secondary hidden">📊 导出Excel</button>
-                    <button id="export-pdf-btn" class="btn btn-secondary hidden">📄 导出PDF</button>
-                    <button id="lottery-btn" class="btn btn-success">🎲 开始摇号</button>
+                    <button id="home-btn" class="btn btn-secondary hidden">返回首页</button>
+                    <button id="export-excel-btn" class="btn btn-secondary hidden">导出 Excel</button>
+                    <button id="export-pdf-btn" class="btn btn-secondary hidden">导出 PDF</button>
+                    <button id="lottery-btn" class="btn btn-success">开始摇号</button>
                 </div>
             </div>
 
-            <div class="table-container glass-card">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">总人数</div>
+                    <div class="stat-value" id="stat-total">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">男生</div>
+                    <div class="stat-value" id="stat-male">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">女生</div>
+                    <div class="stat-value" id="stat-female">0</div>
+                </div>
+            </div>
+
+            <div class="table-container">
                 <table id="data-table">
                     <thead>
                         <tr>

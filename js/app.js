@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportExcelBtn = document.getElementById('export-excel-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
     const homeBtn = document.getElementById('home-btn');
+    const statTotal = document.getElementById('stat-total');
+    const statMale = document.getElementById('stat-male');
+    const statFemale = document.getElementById('stat-female');
 
     let isLotteryStarted = false;
     let isLotteryComplete = false;
@@ -116,6 +119,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
 
     /**
+     * 更新统计卡片
+     * @param {Array} data
+     */
+    function updateStats(data) {
+        const total = data.length;
+        const male = data.filter(item => item.gender === '男').length;
+        const female = data.filter(item => item.gender === '女').length;
+        if (statTotal) statTotal.textContent = total;
+        if (statMale) statMale.textContent = male;
+        if (statFemale) statFemale.textContent = female;
+    }
+
+    /**
      * 显示摇号区域
      * @param {Array} data
      */
@@ -127,11 +143,15 @@ document.addEventListener('DOMContentLoaded', () => {
         isLotteryStarted = false;
         isLotteryComplete = false;
         lotteryBtn.disabled = false;
-        lotteryBtn.textContent = '🎲 开始摇号';
+        lotteryBtn.textContent = '开始摇号';
         lotteryBtn.classList.remove('btn-danger');
         lotteryBtn.classList.add('btn-success');
         exportExcelBtn.classList.add('hidden');
         exportPdfBtn.classList.add('hidden');
+        homeBtn.classList.add('hidden');
+
+        // 更新统计
+        updateStats(data);
 
         // 渲染表格
         renderTable(data, false);
@@ -215,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function startLottery() {
         isLotteryStarted = true;
         isLotteryComplete = false;
-        lotteryBtn.textContent = '🛑 停止摇号';
+        lotteryBtn.textContent = '停止摇号';
         lotteryBtn.classList.remove('btn-success');
         lotteryBtn.classList.add('btn-danger');
 
@@ -230,13 +250,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopLottery() {
         isLotteryComplete = true;
         lotteryBtn.disabled = false;
-        lotteryBtn.textContent = '🔄 重新摇号';
+        lotteryBtn.textContent = '重新摇号';
         lotteryBtn.classList.remove('btn-danger');
         lotteryBtn.classList.add('btn-success');
 
         const result = LotteryModule.stopRolling((data, isRolling) => {
             renderTable(data, isRolling);
         });
+
+        // 更新统计
+        updateStats(result);
 
         // 显示导出按钮和返回首页按钮
         exportExcelBtn.classList.remove('hidden');
@@ -258,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const duration = 500; // 0.5秒
         const end = Date.now() + duration;
 
-        const colors = ['#667eea', '#764ba2', '#11998e', '#38ef7d', '#ff416c', '#ff4b2b'];
+        const colors = ['#D97706', '#15803D', '#2563EB', '#DB2777', '#1C1C1A'];
 
         (function frame() {
             confetti({
@@ -329,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tableBody.innerHTML = '';
 
         // 重置摇号按钮
-        lotteryBtn.textContent = '🎲 开始摇号';
+        lotteryBtn.textContent = '开始摇号';
         lotteryBtn.classList.remove('btn-danger', 'btn-secondary');
         lotteryBtn.classList.add('btn-success');
     });
