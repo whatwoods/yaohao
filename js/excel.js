@@ -228,31 +228,33 @@ const ExcelModule = {
                 position: fixed;
                 left: -9999px;
                 top: 0;
-                width: 800px;
-                padding: 40px;
+                width: 900px;
+                padding: 24px;
                 background: ${bg};
                 font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
                 color: ${textPrimary};
             `;
 
             const headerHtml = pageIndex === 0 ? `
-                <div style="margin-bottom: 12px;">
+                <div style="margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-                        <h1 style="font-size: 24px; font-weight: 600; color: ${textPrimary}; margin: 0; letter-spacing: -0.01em;">公寓摇号结果</h1>
+                        <h1 style="font-size: 22px; font-weight: 600; color: ${textPrimary}; margin: 0; letter-spacing: -0.01em;">公寓摇号结果</h1>
                         <span style="font-size: 12px; color: ${textMuted};">生成时间: ${new Date().toLocaleString('zh-CN')}</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
-                        <div style="background: ${surface}; border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
-                            <div style="font-size: 11px; color: ${textSecondary}; margin-bottom: 2px;">总人数</div>
-                            <div style="font-size: 16px; font-weight: 500; color: ${textPrimary};">${total}</div>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 16px; padding: 8px 16px; background: ${surface}; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05); margin-top: 10px;">
+                        <div style="display: flex; align-items: baseline; gap: 6px;">
+                            <span style="font-size: 12px; color: ${textSecondary};">总人数</span>
+                            <span style="font-size: 15px; font-weight: 600; color: ${textPrimary};">${total}</span>
                         </div>
-                        <div style="background: ${surface}; border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
-                            <div style="font-size: 11px; color: ${textSecondary}; margin-bottom: 2px;">男生</div>
-                            <div style="font-size: 16px; font-weight: 500; color: ${textPrimary};">${male}</div>
+                        <div style="width: 1px; height: 12px; background: ${border};"></div>
+                        <div style="display: flex; align-items: baseline; gap: 6px;">
+                            <span style="font-size: 12px; color: ${textSecondary};">男生</span>
+                            <span style="font-size: 15px; font-weight: 600; color: ${textPrimary};">${male}</span>
                         </div>
-                        <div style="background: ${surface}; border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
-                            <div style="font-size: 11px; color: ${textSecondary}; margin-bottom: 2px;">女生</div>
-                            <div style="font-size: 16px; font-weight: 500; color: ${textPrimary};">${female}</div>
+                        <div style="width: 1px; height: 12px; background: ${border};"></div>
+                        <div style="display: flex; align-items: baseline; gap: 6px;">
+                            <span style="font-size: 12px; color: ${textSecondary};">女生</span>
+                            <span style="font-size: 15px; font-weight: 600; color: ${textPrimary};">${female}</span>
                         </div>
                     </div>
                 </div>
