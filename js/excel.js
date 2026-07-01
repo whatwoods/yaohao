@@ -2,11 +2,26 @@
  * Excel 文件读取与导出模块
  */
 
+/**
+ * HTML 转义，防止 XSS
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 const ExcelModule = {
     /**
      * 读取Excel文件并解析数据
      * @param {File} file - 上传的Excel文件
-     * @returns {Promise<Array>} - 解析后的数据数组
+     * @returns {Promise<{data: Array, idLabel: string}>} - data: 数据数组；idLabel: 第一列表头（"工号" 或 "姓名" 等）
      */
     async readFile(file) {
         return new Promise((resolve, reject) => {
@@ -23,6 +38,22 @@ const ExcelModule = {
 
                     // 转换为JSON，跳过表头
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    // 读取表头第一列，识别是"工号"还是"姓名"
+                    // 兼容多种常见写法；默认为"工号"
+                    const rawHeader = jsonData[0] || [];
+                    const firstColHeader = rawHeader[0] != null ? String(rawHeader[0]).trim() : '';
+                    let idLabel = '工号';
+                    const nameKeywords = ['姓名', '名字', '名称', '员工姓名', '人员姓名'];
+                    const idKeywords = ['工号', '员工编号', '编号', '员工号', '人员编号', '工牌号', 'EmpID', 'empid', 'emp_id'];
+                    if (nameKeywords.some(k => firstColHeader.includes(k))) {
+                        idLabel = '姓名';
+                    } else if (idKeywords.some(k => firstColHeader.toLowerCase().includes(k.toLowerCase()))) {
+                        idLabel = '工号';
+                    } else if (firstColHeader) {
+                        // 无法识别的表头，沿用原表头文字
+                        idLabel = firstColHeader;
+                    }
 
                     // 跳过第一行（表头），解析数据
                     const result = [];
@@ -44,16 +75,25 @@ const ExcelModule = {
 
                         // 性别格式校验
                         if (gender !== '男' && gender !== '女') {
-                            invalidGenders.push(`${employeeId}: "${gender}"`);
                             // 尝试自动修正常见格式
+                            let normalizedGender = null;
                             if (['m', 'M', 'male', 'Male', 'MALE', '男性'].includes(gender)) {
-                                gender = '男';
+                                normalizedGender = '男';
                             } else if (['f', 'F', 'female', 'Female', 'FEMALE', '女性'].includes(gender)) {
-                                gender = '女';
+                                normalizedGender = '女';
+                            }
+
+                            if (normalizedGender) {
+                                invalidGenders.push(`${employeeId}: "${gender}" -> "${normalizedGender}"`);
+                                gender = normalizedGender;
+                            } else {
+                                // 无法识别的性别，跳过该行
+                                invalidGenders.push(`${employeeId}: "${gender}"（无法识别，已跳过该行）`);
+                                continue;
                             }
                         }
 
-                        // 检查重复工号
+                        // 检查重复工号/姓名
                         if (employeeIds.has(employeeId)) {
                             duplicates.push(employeeId);
                             continue;
@@ -70,7 +110,7 @@ const ExcelModule = {
                     // 警告信息
                     const warnings = [];
                     if (duplicates.length > 0) {
-                        warnings.push(`重复工号（已忽略）:\n${duplicates.join(', ')}`);
+                        warnings.push(`重复${idLabel}（已忽略）:\n${duplicates.join(', ')}`);
                     }
                     if (invalidGenders.length > 0) {
                         warnings.push(`非标准性别格式（已尝试自动修正）:\n${invalidGenders.join('\n')}`);
@@ -79,7 +119,7 @@ const ExcelModule = {
                         alert(warnings.join('\n\n'));
                     }
 
-                    resolve(result);
+                    resolve({ data: result, idLabel });
                 } catch (error) {
                     reject(new Error('Excel文件解析失败: ' + error.message));
                 }
@@ -97,14 +137,15 @@ const ExcelModule = {
      * 导出数据为Excel文件
      * @param {Array} data - 要导出的数据
      * @param {string} filename - 文件名
+     * @param {string} idLabel - 第一列表头（"工号" 或 "姓名" 等）
      */
-    exportToExcel(data, filename = '摇号结果.xlsx') {
+    exportToExcel(data, filename = '摇号结果.xlsx', idLabel = '工号') {
         // 按房间号排序
         const sortedData = [...data].sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, 'zh-CN'));
 
-        // 准备数据
+        // 准备数据（表头使用传入的 idLabel）
         const exportData = [
-            ['序号', '工号', '性别', '房间号']
+            ['序号', idLabel, '性别', '房间号']
         ];
 
         sortedData.forEach((item, index) => {
@@ -118,14 +159,12 @@ const ExcelModule = {
 
         // 创建工作簿
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_array ?
-            XLSX.utils.aoa_to_sheet(exportData) :
-            XLSX.utils.aoa_to_sheet(exportData);
+        const ws = XLSX.utils.aoa_to_sheet(exportData);
 
         // 设置列宽
         ws['!cols'] = [
             { wch: 8 },   // 序号
-            { wch: 15 },  // 工号
+            { wch: 15 },  // 工号/姓名
             { wch: 8 },   // 性别
             { wch: 25 }   // 房间号
         ];
@@ -137,11 +176,18 @@ const ExcelModule = {
     },
 
     /**
-     * 导出数据为PDF文件（支持分页）
+     * 导出数据为PDF文件（高清 JPEG 嵌入版）
+     *
+     * 参数取舍说明：
+     *   - 用户期望体积约 1MB（之前 312KB 版本清晰度不足）
+     *   - scale=2 + JPEG q=0.92 + 容器 800px：综合体积约 0.8~1.2MB（50 人场景）
+     *   - 相比 312KB 版本（scale=1.5, q=0.85, 700px），清晰度显著提升
+     *
      * @param {Array} data - 要导出的数据
      * @param {string} filename - 文件名
+     * @param {string} idLabel - 第一列表头（"工号" 或 "姓名" 等）
      */
-    async exportToPDF(data, filename = '摇号结果.pdf') {
+    async exportToPDF(data, filename = '摇号结果.pdf', idLabel = '工号') {
         // 按房间号排序
         const sortedData = [...data].sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, 'zh-CN'));
 
@@ -173,7 +219,7 @@ const ExcelModule = {
                 font-family: system-ui, -apple-system, 'Microsoft YaHei', sans-serif;
             `;
 
-            // 构建HTML内容
+            // 构建HTML内容（表头使用传入的 idLabel）
             container.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
                     <h1 style="font-size: 24px; color: #333; margin: 0;">公寓摇号结果</h1>
@@ -184,7 +230,7 @@ const ExcelModule = {
                     <thead>
                         <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
                             <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">序号</th>
-                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">工号</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">${escapeHtml(idLabel)}</th>
                             <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">性别</th>
                             <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">房间号</th>
                         </tr>
@@ -193,9 +239,9 @@ const ExcelModule = {
                         ${pageData.map((item, index) => `
                             <tr style="background: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
                                 <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${startIdx + index + 1}</td>
-                                <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${item.employeeId}</td>
-                                <td style="padding: 10px; text-align: center; border: 1px solid #ddd; color: ${item.gender === '男' ? '#3b82f6' : '#ec4899'};">${item.gender}</td>
-                                <td style="padding: 10px; text-align: left; border: 1px solid #ddd;">${item.roomNumber}</td>
+                                <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${escapeHtml(item.employeeId)}</td>
+                                <td style="padding: 10px; text-align: center; border: 1px solid #ddd; color: ${item.gender === '男' ? '#3b82f6' : '#ec4899'};">${escapeHtml(item.gender)}</td>
+                                <td style="padding: 10px; text-align: left; border: 1px solid #ddd;">${escapeHtml(item.roomNumber)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -206,20 +252,24 @@ const ExcelModule = {
 
             try {
                 // 使用 html2canvas 渲染
+                // scale=2 保证高清，配合 JPEG q=0.92 平衡体积（约 1MB）
                 const canvas = await html2canvas(container, {
                     scale: 2,
                     useCORS: true,
-                    logging: false
+                    logging: false,
+                    backgroundColor: '#ffffff'
                 });
 
-                // 计算缩放比例
-                const imgData = canvas.toDataURL('image/png');
+                // JPEG + quality 0.92（高清但有压缩，体积约 1MB）
+                const imgData = canvas.toDataURL('image/jpeg', 0.92);
                 const imgWidth = canvas.width;
                 const imgHeight = canvas.height;
 
-                const ratio = Math.min(pdfWidth / (imgWidth * 0.264583), pdfHeight / (imgHeight * 0.264583));
-                const scaledWidth = imgWidth * 0.264583 * ratio * 0.9;
-                const scaledHeight = imgHeight * 0.264583 * ratio * 0.9;
+                // px → mm 换算
+                const pxToMm = 0.264583;
+                const ratio = Math.min(pdfWidth / (imgWidth * pxToMm), pdfHeight / (imgHeight * pxToMm));
+                const scaledWidth = imgWidth * pxToMm * ratio * 0.92;
+                const scaledHeight = imgHeight * pxToMm * ratio * 0.92;
 
                 // 居中放置
                 const x = (pdfWidth - scaledWidth) / 2;
@@ -230,7 +280,7 @@ const ExcelModule = {
                     pdf.addPage();
                 }
 
-                pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
+                pdf.addImage(imgData, 'JPEG', x, y, scaledWidth, scaledHeight, undefined, 'FAST');
             } finally {
                 document.body.removeChild(container);
             }

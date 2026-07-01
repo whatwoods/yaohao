@@ -32,7 +32,9 @@ const LotteryModule = {
         const lastPart = parts[parts.length - 1];
         const isBedroomSuffix = /^[A-Za-z]$/.test(lastPart);
 
-        if (isBedroomSuffix && parts.length > 4) {
+        // 只要房间号含分隔符且最后一段为单字母即识别为卧室后缀
+        // （原条件 parts.length > 4 过于严格，会导致 "16-1001-A" 等格式无法识别）
+        if (isBedroomSuffix && parts.length >= 2) {
             return {
                 baseRoom: parts.slice(0, -1).join('-'),
                 bedroom: lastPart
@@ -116,11 +118,10 @@ const LotteryModule = {
                 selectedPool = femaleEmployees;
             }
 
-            // 如果没有足够的同性别人员，将这些房间转为单独房间处理
+            // 如果没有足够的同性别人员，将整组房间暂存待后续处理
+            // （保持 roomGroup 完整，以便后续按组尝试同性别分配）
             if (!selectedPool) {
-                for (const roomInfo of roomGroup) {
-                    unassignedSharedRooms.push(roomInfo);
-                }
+                unassignedSharedRooms.push(roomGroup);
                 continue;
             }
 
@@ -139,19 +140,67 @@ const LotteryModule = {
         const remainingEmployees = [...maleEmployees, ...femaleEmployees];
         this.shuffleArray(remainingEmployees);
 
-        // 合并未分配的共享房间到单独房间
-        const allSingleRooms = [...singleRooms, ...unassignedSharedRooms];
-        this.shuffleArray(allSingleRooms);
+        // 处理无法满足同性别约束的共享房间组
+        // 这些房间不能直接当作单独房间混合分配（否则同一基础房间的不同卧室
+        // 可能被分到一男一女，违反核心约束）
+        // 策略：尽量从剩余人员中找同性别填满整个房间组；
+        //       若不够，只填能保持同性的卧室，其余卧室留空
+        const assignRoom = (roomInfo, employee) => {
+            result[roomInfo.originalIndex] = {
+                employeeId: employee.employeeId,
+                gender: employee.gender,
+                roomNumber: roomInfo.fullRoom
+            };
+        };
 
-        // 分配单独房间（允许房间多于人数，多余房间留空）
-        for (const roomInfo of allSingleRooms) {
+        for (const roomGroup of unassignedSharedRooms) {
+            const roomCount = roomGroup.length;
+
+            // 统计剩余人员中各性别数量
+            const maleCount = remainingEmployees.filter(e => e.gender === '男').length;
+            const femaleCount = remainingEmployees.filter(e => e.gender === '女').length;
+
+            // 尝试选择能填满整个房间组的性别
+            let selectedGender = null;
+            if (maleCount >= roomCount && femaleCount >= roomCount) {
+                selectedGender = Math.random() < 0.5 ? '男' : '女';
+            } else if (maleCount >= roomCount) {
+                selectedGender = '男';
+            } else if (femaleCount >= roomCount) {
+                selectedGender = '女';
+            }
+
+            if (selectedGender) {
+                // 可以满足同性别约束，分配全部卧室
+                let assigned = 0;
+                for (let i = remainingEmployees.length - 1; i >= 0 && assigned < roomCount; i--) {
+                    if (remainingEmployees[i].gender === selectedGender) {
+                        const employee = remainingEmployees.splice(i, 1)[0];
+                        assignRoom(roomGroup[assigned], employee);
+                        assigned++;
+                    }
+                }
+            } else {
+                // 无法满足同性别约束，只分配能保持同性的卧室，其余留空
+                const bestGender = maleCount >= femaleCount ? '男' : '女';
+                let assigned = 0;
+                for (let i = remainingEmployees.length - 1; i >= 0 && assigned < roomCount; i--) {
+                    if (remainingEmployees[i].gender === bestGender) {
+                        const employee = remainingEmployees.splice(i, 1)[0];
+                        assignRoom(roomGroup[assigned], employee);
+                        assigned++;
+                    }
+                }
+                // 剩余卧室留空（result 中保持 undefined）
+            }
+        }
+
+        // 处理单独房间（允许房间多于人数，多余房间留空）
+        this.shuffleArray(singleRooms);
+        for (const roomInfo of singleRooms) {
             if (remainingEmployees.length > 0) {
                 const employee = remainingEmployees.shift();
-                result[roomInfo.originalIndex] = {
-                    employeeId: employee.employeeId,
-                    gender: employee.gender,
-                    roomNumber: roomInfo.fullRoom
-                };
+                assignRoom(roomInfo, employee);
             }
             // 如果没有剩余人员，房间保持未分配（result中为undefined）
         }

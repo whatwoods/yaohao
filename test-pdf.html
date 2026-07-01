@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF 高清 JPG + 动态表头 测试</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; }
+        .card { background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        button { padding: 12px 24px; font-size: 15px; border: none; border-radius: 8px;
+                cursor: pointer; margin-right: 8px; margin-bottom: 8px; color: white; background: #667eea; }
+        button:hover { background: #5568d3; }
+        button.secondary { background: #a0aec0; }
+        button.secondary:hover { background: #718096; }
+        .result { margin-top: 16px; padding: 12px; background: white; border-radius: 8px;
+                  font-family: monospace; font-size: 14px; min-height: 40px; }
+        .tip { background: #ebf8ff; border-left: 4px solid #4299e1; padding: 12px 16px;
+               border-radius: 4px; margin: 16px 0; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+        th { background: #667eea; color: white; }
+        .check { color: #38a169; }
+        .badge { background: #38a169; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <h1>PDF 高清 JPG + 动态表头 测试</h1>
+
+    <div class="tip">
+        <strong>本次改动：</strong>
+        <ol style="margin: 8px 0 0 20px;">
+            <li><strong>PDF 恢复 JPG 方案 + 提升清晰度</strong>：scale=2 / JPEG q=0.92 / 容器 800px，目标体积 ~1MB（之前 312KB 太模糊）</li>
+            <li><strong>动态表头</strong>：上传 Excel 时读取首列表头，自动识别"工号"/"姓名"等，所有界面同步跟随</li>
+        </ol>
+    </div>
+
+    <div class="card">
+        <h3>测试 1：动态表头识别</h3>
+        <p style="color:#666;font-size:13px">下方按钮模拟上传不同的 Excel 表头，查看主表格的表头是否会自动更新。</p>
+        <button onclick="loadTestData('工号')">模拟上传（表头=工号）</button>
+        <button onclick="loadTestData('姓名')">模拟上传（表头=姓名）</button>
+        <button onclick="loadTestData('员工编号')">模拟上传（表头=员工编号）</button>
+        <button onclick="loadTestData('员工姓名')">模拟上传（表头=员工姓名）</button>
+        <button onclick="loadTestData('人员')">模拟上传（表头=人员，未知）</button>
+        <div id="header-result" class="result">点击按钮测试表头识别...</div>
+    </div>
+
+    <div class="card">
+        <h3>测试 2：导出 PDF（高清 JPG）</h3>
+        <p style="color:#666;font-size:13px">基于当前模拟数据导出 PDF，验证体积约 1MB 且清晰度足够。</p>
+        <button onclick="exportPDF()">导出 PDF（高清 JPG）</button>
+        <button onclick="exportExcel()" class="secondary">导出 Excel（验证表头跟随）</button>
+        <div id="pdf-result" class="result">点击按钮测试导出...</div>
+    </div>
+
+    <div class="card">
+        <h3>清晰度 vs 体积 参数对照</h3>
+        <table>
+            <tr>
+                <th>版本</th><th>scale</th><th>JPEG q</th><th>容器宽度</th>
+                <th>预估体积</th><th>清晰度</th>
+            </tr>
+            <tr>
+                <td>原版（PNG）</td><td>2</td><td>—</td><td>800px</td>
+                <td>3-5 MB</td><td>清晰</td>
+            </tr>
+            <tr>
+                <td>过度优化版</td><td>1.5</td><td>0.85</td><td>700px</td>
+                <td>~312 KB</td><td style="color:#e53e3e">模糊</td>
+            </tr>
+            <tr style="background:#e6fffa;">
+                <td><strong>当前版</strong></td><td><strong>2</strong></td><td><strong>0.92</strong></td><td><strong>800px</strong></td>
+                <td><strong>~1 MB</strong></td><td><strong>清晰</strong></td>
+            </tr>
+        </table>
+        <p style="margin-top:12px;color:#666;font-size:13px">
+            ✓ 相比 312KB 版本：scale 1.5→2（像素 +78%），q 0.85→0.92（体积 +30%），容器 700→800px<br>
+            ✓ 相比原版 PNG：JPEG + quality 0.92 + 'FAST' 压缩，体积降 60-70%
+        </p>
+    </div>
+
+    <script src="js/lib/xlsx.min.js"></script>
+    <script src="js/lib/jspdf.min.js"></script>
+    <script src="js/lib/html2canvas.min.js"></script>
+    <script src="js/excel.js"></script>
+    <script src="js/lottery.js"></script>
+
+    <script>
+        // 当前测试用数据
+        let testData = [];
+        let testIdLabel = '工号';
+
+        function generateData(idLabel) {
+            const data = [];
+            const buildings = ['南', '北', '东'];
+            const names = ['张三','李四','王五','赵六','钱七','孙八','周九','吴十',
+                          '郑明','王芳','李娜','刘洋','陈静','杨光','赵敏','孙磊'];
+            for (let i = 0; i < 50; i++) {
+                const building = buildings[i % 3];
+                const floor = 10 + (i % 8);
+                const room = 1000 + i + 1;
+                const bedroom = i % 2 === 0 ? 'A' : 'B';
+                const idValue = idLabel === '姓名' || idLabel === '员工姓名'
+                    ? names[i % names.length] + (i >= names.length ? (i - names.length + 2) : '')
+                    : 'EMP' + String(10001 + i);
+                data.push({
+                    employeeId: idValue,
+                    gender: i % 3 === 0 ? '女' : '男',
+                    roomNumber: `${building}-${floor}-1-${room}-${bedroom}`
+                });
+            }
+            return data;
+        }
+
+        function loadTestData(label) {
+            testData = generateData(label);
+            testIdLabel = label;
+            document.getElementById('header-result').innerHTML =
+                '✓ 模拟上传成功<br>' +
+                '  表头字段: <strong>' + label + '</strong><br>' +
+                '  数据条数: ' + testData.length + '<br>' +
+                '  示例: ' + testData[0].employeeId + ' / ' + testData[0].gender + ' / ' + testData[0].roomNumber;
+        }
+
+        async function exportPDF() {
+            if (testData.length === 0) {
+                loadTestData('工号');
+            }
+            document.getElementById('pdf-result').innerHTML = '⏳ 正在生成 PDF...';
+            const start = performance.now();
+            try {
+                await ExcelModule.exportToPDF(testData, '高清测试.pdf', testIdLabel);
+                const elapsed = (performance.now() - start).toFixed(0);
+                document.getElementById('pdf-result').innerHTML =
+                    '✅ 完成！耗时 ' + elapsed + 'ms<br>' +
+                    '📎 已下载"高清测试.pdf"，请查看文件大小<br>' +
+                    '   表头第二列应为: <strong>' + testIdLabel + '</strong>';
+            } catch (e) {
+                document.getElementById('pdf-result').innerHTML = '❌ 失败: ' + e.message;
+            }
+        }
+
+        function exportExcel() {
+            if (testData.length === 0) {
+                loadTestData('工号');
+            }
+            try {
+                ExcelModule.exportToExcel(testData, '表头测试.xlsx', testIdLabel);
+                document.getElementById('pdf-result').innerHTML =
+                    '✅ 已下载"表头测试.xlsx"<br>' +
+                    '   打开 Excel 检查第二列表头是否为: <strong>' + testIdLabel + '</strong>';
+            } catch (e) {
+                document.getElementById('pdf-result').innerHTML = '❌ 失败: ' + e.message;
+            }
+        }
+
+        // 初始化默认数据
+        loadTestData('工号');
+    </script>
+</body>
+</html>

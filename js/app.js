@@ -18,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let isLotteryStarted = false;
     let isLotteryComplete = false;
 
+    // 当前数据的第一列表头（"工号" / "姓名" 等），随上传 Excel 表头动态变化
+    let currentIdLabel = '工号';
+
+    // 表头单元格元素（用于动态更新文字）
+    const thIdLabel = document.getElementById('th-id-label');
+
     // ========================================
     // 文件上传处理
     // ========================================
@@ -81,13 +87,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // 读取文件
-            const data = await ExcelModule.readFile(file);
+            // 读取文件（返回 { data, idLabel }）
+            const { data, idLabel } = await ExcelModule.readFile(file);
 
             if (data.length === 0) {
                 alert('文件中没有有效数据');
                 return;
             }
+
+            // 记录本次上传的表头标签，供表格/导出使用
+            currentIdLabel = idLabel;
+            if (thIdLabel) thIdLabel.textContent = idLabel;
 
             // 初始化摇号模块
             LotteryModule.init(data);
@@ -138,15 +148,37 @@ document.addEventListener('DOMContentLoaded', () => {
         data.forEach((item, index) => {
             const tr = document.createElement('tr');
 
-            const genderClass = item.gender === '男' ? 'gender-male' : 'gender-female';
+            // 性别样式：仅识别男/女，其余归为 unknown
+            let genderClass;
+            if (item.gender === '男') {
+                genderClass = 'gender-male';
+            } else if (item.gender === '女') {
+                genderClass = 'gender-female';
+            } else {
+                genderClass = 'gender-unknown';
+            }
             const rollingClass = isRolling ? 'rolling' : '';
 
-            tr.innerHTML = `
-                <td>${index + 1}</td>
-                <td class="${rollingClass}">${item.employeeId}</td>
-                <td class="${genderClass} ${rollingClass}">${item.gender}</td>
-                <td class="${rollingClass}">${item.roomNumber}</td>
-            `;
+            // 使用 DOM API + textContent 防止 XSS
+            const tdIndex = document.createElement('td');
+            tdIndex.textContent = index + 1;
+
+            const tdEmp = document.createElement('td');
+            if (rollingClass) tdEmp.className = rollingClass;
+            tdEmp.textContent = item.employeeId;
+
+            const tdGender = document.createElement('td');
+            tdGender.className = `${genderClass}${rollingClass ? ' ' + rollingClass : ''}`;
+            tdGender.textContent = item.gender;
+
+            const tdRoom = document.createElement('td');
+            if (rollingClass) tdRoom.className = rollingClass;
+            tdRoom.textContent = item.roomNumber;
+
+            tr.appendChild(tdIndex);
+            tr.appendChild(tdEmp);
+            tr.appendChild(tdGender);
+            tr.appendChild(tdRoom);
 
             tableBody.appendChild(tr);
         });
@@ -258,13 +290,13 @@ document.addEventListener('DOMContentLoaded', () => {
     exportExcelBtn.addEventListener('click', () => {
         const data = LotteryModule.getCurrentData();
         const timestamp = new Date().toISOString().slice(0, 10);
-        ExcelModule.exportToExcel(data, `摇号结果_${timestamp}.xlsx`);
+        ExcelModule.exportToExcel(data, `摇号结果_${timestamp}.xlsx`, currentIdLabel);
     });
 
     exportPdfBtn.addEventListener('click', () => {
         const data = LotteryModule.getCurrentData();
         const timestamp = new Date().toISOString().slice(0, 10);
-        ExcelModule.exportToPDF(data, `摇号结果_${timestamp}.pdf`);
+        ExcelModule.exportToPDF(data, `摇号结果_${timestamp}.pdf`, currentIdLabel);
     });
 
     // ========================================
@@ -272,6 +304,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
 
     homeBtn.addEventListener('click', () => {
+        // 停止摇号动画并清理后台定时器（防止内存泄漏）
+        if (LotteryModule.isRolling) {
+            LotteryModule.stopRolling(() => {});
+        }
+
         // 重置所有状态
         isLotteryStarted = false;
         isLotteryComplete = false;

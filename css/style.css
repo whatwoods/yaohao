@@ -434,3 +434,9 @@ body {
     color: #d53f8c;
     font-weight: 500;
 }
+
+.gender-unknown {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-style: italic;
+}
