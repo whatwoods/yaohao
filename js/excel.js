@@ -205,14 +205,14 @@ const ExcelModule = {
         const ROWS_PER_PAGE = 25;
         const totalPages = Math.ceil(sortedData.length / ROWS_PER_PAGE);
 
-        // 设计 token（与页面 CSS 保持一致）
-        const bg = '#FDFCF8';
+        // 设计 token（与页面 Apple 风格 CSS 保持一致）
+        const bg = '#F5F5F7';
         const surface = '#FFFFFF';
-        const border = '#E8E4D9';
-        const textPrimary = '#1C1C1A';
-        const textSecondary = '#6B6A63';
-        const textMuted = '#9C9B91';
-        const accent = '#D97706';
+        const border = '#E5E5EA';
+        const textPrimary = '#1D1D1F';
+        const textSecondary = '#6E6E73';
+        const textMuted = '#86868B';
+        const accent = '#007AFF';
         const maleColor = '#2563EB';
         const femaleColor = '#DB2777';
 
@@ -230,35 +230,35 @@ const ExcelModule = {
                 top: 0;
                 width: 800px;
                 padding: 40px;
-                background: ${surface};
-                font-family: 'Noto Sans SC', 'Geist', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                background: ${bg};
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
                 color: ${textPrimary};
             `;
 
             const headerHtml = pageIndex === 0 ? `
-                <div style="margin-bottom: 16px;">
-                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-                        <h1 style="font-size: 24px; font-weight: 600; color: ${textPrimary}; margin: 0;">公寓摇号结果</h1>
+                <div style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+                        <h1 style="font-size: 24px; font-weight: 600; color: ${textPrimary}; margin: 0; letter-spacing: -0.01em;">公寓摇号结果</h1>
                         <span style="font-size: 12px; color: ${textMuted};">生成时间: ${new Date().toLocaleString('zh-CN')}</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
-                        <div style="background: ${bg}; border: 2px solid ${border}; border-radius: 6px; padding: 16px;">
-                            <div style="font-size: 12px; color: ${textSecondary}; margin-bottom: 4px;">总人数</div>
-                            <div style="font-size: 24px; font-weight: 600; color: ${textPrimary};">${total}</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
+                        <div style="background: ${surface}; border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
+                            <div style="font-size: 11px; color: ${textSecondary}; margin-bottom: 2px;">总人数</div>
+                            <div style="font-size: 16px; font-weight: 500; color: ${textPrimary};">${total}</div>
                         </div>
-                        <div style="background: ${bg}; border: 2px solid ${border}; border-radius: 6px; padding: 16px;">
-                            <div style="font-size: 12px; color: ${textSecondary}; margin-bottom: 4px;">男生</div>
-                            <div style="font-size: 24px; font-weight: 600; color: ${textPrimary};">${male}</div>
+                        <div style="background: ${surface}; border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
+                            <div style="font-size: 11px; color: ${textSecondary}; margin-bottom: 2px;">男生</div>
+                            <div style="font-size: 16px; font-weight: 500; color: ${textPrimary};">${male}</div>
                         </div>
-                        <div style="background: ${bg}; border: 2px solid ${border}; border-radius: 6px; padding: 16px;">
-                            <div style="font-size: 12px; color: ${textSecondary}; margin-bottom: 4px;">女生</div>
-                            <div style="font-size: 24px; font-weight: 600; color: ${textPrimary};">${female}</div>
+                        <div style="background: ${surface}; border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
+                            <div style="font-size: 11px; color: ${textSecondary}; margin-bottom: 2px;">女生</div>
+                            <div style="font-size: 16px; font-weight: 500; color: ${textPrimary};">${female}</div>
                         </div>
                     </div>
                 </div>
             ` : `
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px;">
-                    <h1 style="font-size: 24px; font-weight: 600; color: ${textPrimary}; margin: 0;">公寓摇号结果</h1>
+                    <h1 style="font-size: 24px; font-weight: 600; color: ${textPrimary}; margin: 0; letter-spacing: -0.01em;">公寓摇号结果</h1>
                     <span style="font-size: 12px; color: ${textMuted};">第 ${pageIndex + 1} / ${totalPages} 页</span>
                 </div>
             `;
@@ -266,22 +266,22 @@ const ExcelModule = {
             // 构建HTML内容（表头使用传入的 idLabel）
             container.innerHTML = `
                 ${headerHtml}
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px; border: 2px solid ${border}; border-radius: 6px; overflow: hidden;">
+                <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; background: ${surface}; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
                     <thead>
-                        <tr style="background: ${bg}; color: ${textPrimary}; border-bottom: 2px solid ${border};">
-                            <th style="padding: 12px; text-align: center; border-right: 1px solid ${border}; font-weight: 600;">序号</th>
-                            <th style="padding: 12px; text-align: center; border-right: 1px solid ${border}; font-weight: 600;">${escapeHtml(idLabel)}</th>
-                            <th style="padding: 12px; text-align: center; border-right: 1px solid ${border}; font-weight: 600;">性别</th>
-                            <th style="padding: 12px; text-align: left; font-weight: 600;">房间号</th>
+                        <tr style="background: ${bg}; color: ${textPrimary}; border-bottom: 1px solid ${border};">
+                            <th style="padding: 12px; text-align: center; border-bottom: 1px solid ${border}; font-weight: 600;">序号</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 1px solid ${border}; font-weight: 600;">${escapeHtml(idLabel)}</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 1px solid ${border}; font-weight: 600;">性别</th>
+                            <th style="padding: 12px 12px 12px 32px; text-align: left; border-bottom: 1px solid ${border}; font-weight: 600;">房间号</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${pageData.map((item, index) => `
-                            <tr style="background: ${index % 2 === 0 ? surface : bg}; border-bottom: 1px solid ${border};">
-                                <td style="padding: 10px; text-align: center; border-right: 1px solid ${border};">${startIdx + index + 1}</td>
-                                <td style="padding: 10px; text-align: center; border-right: 1px solid ${border};">${escapeHtml(item.employeeId)}</td>
-                                <td style="padding: 10px; text-align: center; border-right: 1px solid ${border}; color: ${item.gender === '男' ? maleColor : femaleColor}; font-weight: 500;">${escapeHtml(item.gender)}</td>
-                                <td style="padding: 10px; text-align: left;">${escapeHtml(item.roomNumber)}</td>
+                            <tr style="background: ${surface}; border-bottom: 1px solid ${border};">
+                                <td style="padding: 10px; text-align: center; border-bottom: 1px solid ${border};">${startIdx + index + 1}</td>
+                                <td style="padding: 10px; text-align: center; border-bottom: 1px solid ${border};">${escapeHtml(item.employeeId)}</td>
+                                <td style="padding: 10px; text-align: center; border-bottom: 1px solid ${border}; color: ${item.gender === '男' ? maleColor : femaleColor}; font-weight: 500;">${escapeHtml(item.gender)}</td>
+                                <td style="padding: 10px 10px 10px 32px; text-align: left; border-bottom: 1px solid ${border};">${escapeHtml(item.roomNumber)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -298,7 +298,7 @@ const ExcelModule = {
                     scale: 2,
                     useCORS: true,
                     logging: false,
-                    backgroundColor: surface
+                    backgroundColor: bg
                 });
 
                 // JPEG + quality 0.92（高清但有压缩，体积约 1MB）
